@@ -3,6 +3,7 @@ package com.quesssystems.rpawhatsapp;
 import com.quesssystems.rpawhatsapp.service.RpaService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 
 import javax.annotation.PostConstruct;
 
@@ -15,7 +16,9 @@ public class RpaWhatsappApplication {
     }
 
     public static void main(String[] args) {
-        SpringApplication.run(RpaWhatsappApplication.class, args);
+        SpringApplicationBuilder builder = new SpringApplicationBuilder(RpaWhatsappApplication.class);
+        builder.headless(false);
+        builder.run(args);
     }
 
     @PostConstruct
