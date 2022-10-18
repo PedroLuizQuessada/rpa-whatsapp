@@ -7,6 +7,7 @@ import com.quesssystems.rpawhatsapp.automacao.PendenciaUtil;
 import com.quesssystems.rpawhatsapp.exceptions.CadastrarContatoException;
 import com.quesssystems.rpawhatsapp.exceptions.ContatoNaoCadastroException;
 import com.quesssystems.rpawhatsapp.exceptions.MensagemVaziaException;
+import enums.StatusEnum;
 import enums.UnidadesMedidaTempoEnum;
 import exceptions.*;
 import org.openqa.selenium.WebDriver;
@@ -73,7 +74,12 @@ public class RpaService {
         try {
             AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
             logger.info("Recuperando dados da automação...");
+
             AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(String.format(linkRecuperarDados, idAutomacao));
+            if (automacaoApi.getStatus().equals(StatusEnum.NAOENCONTRADO)) {
+                throw new AutomacaoNaoIdentificadaException(idAutomacao);
+            }
+
             if (automacaoApi.isExecutar(Calendar.getInstance())) {
                 logger.info("Recuperando pendências...");
                 List<Planilha> planilhas = GoogleDriveUtil.recuperarPendencias(googleDrivePathPendentes);
@@ -135,7 +141,7 @@ public class RpaService {
         }
         catch (RecuperarDadosException | ArquivoException | TimerUtilException | MensagemVaziaException |
                NavegadorNaoIdentificadoException | DriverException | UrlInvalidaException | ElementoNaoEncontradoException |
-               CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException e) {
+               CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException | AutomacaoNaoIdentificadaException e) {
             try {
                 AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())));
             }
