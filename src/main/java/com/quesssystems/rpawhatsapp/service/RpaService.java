@@ -71,7 +71,7 @@ public class RpaService {
         logger.info("Iniciando automação...");
 
         try {
-            AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, " "));
+            AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
             logger.info("Recuperando dados da automação...");
             AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(String.format(linkRecuperarDados, idAutomacao));
             if (automacaoApi.isExecutar(Calendar.getInstance())) {
@@ -137,7 +137,7 @@ public class RpaService {
                NavegadorNaoIdentificadoException | DriverException | UrlInvalidaException | ElementoNaoEncontradoException |
                CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException e) {
             try {
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, e.getMessage()));
+                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())));
             }
             catch (RecuperarDadosException e1) {
                 JOptionPane.showMessageDialog(null, e1.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
