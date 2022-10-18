@@ -7,6 +7,7 @@ import com.quesssystems.rpawhatsapp.automacao.PendenciaUtil;
 import com.quesssystems.rpawhatsapp.exceptions.CadastrarContatoException;
 import com.quesssystems.rpawhatsapp.exceptions.ContatoNaoCadastroException;
 import com.quesssystems.rpawhatsapp.exceptions.MensagemVaziaException;
+import enums.NavegadoresEnum;
 import enums.StatusEnum;
 import enums.UnidadesMedidaTempoEnum;
 import exceptions.*;
@@ -51,17 +52,23 @@ public class RpaService {
     @Value("${rpa.intervalo-minutos}")
     private Integer intervaloMinutos;
 
-    @Value("${rpa.navegador}")
-    private String navegador;
-
     @Value("${rpa.webdriver.path}")
     private String webDriverPath;
+
+    @Value("${rpa.browser-exe.path}")
+    private String browserExePath;
+
+    @Value("${rpa.porta}")
+    private Integer porta;
+
+    @Value("${rpa.profile.path}")
+    private String profilePath;
+
+    private final NavegadoresEnum navegador = NavegadoresEnum.CHROME;
 
     private final PendenciaUtil pendenciaUtil;
 
     private final WhatsappService whatsappService;
-
-    private WebDriver webDriver;
 
     public RpaService(PendenciaUtil pendenciaUtil, WhatsappService whatsappService) {
         this.pendenciaUtil = pendenciaUtil;
@@ -73,8 +80,8 @@ public class RpaService {
 
         try {
             AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
-            logger.info("Recuperando dados da automação...");
 
+            logger.info("Recuperando dados da automação...");
             AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(String.format(linkRecuperarDados, idAutomacao));
             if (automacaoApi.getStatus().equals(StatusEnum.NAOENCONTRADO)) {
                 throw new AutomacaoNaoIdentificadaException(idAutomacao);
@@ -108,23 +115,23 @@ public class RpaService {
                         pendenciasWhatsapp.addAll(pendenciaUtil.planilhaToPendencias(planilha));
                     }
 
-                    logger.info("Acessando sites...");
                     if (!pendenciasWhatsapp.isEmpty()) {
-                        webDriver = WebdriverUtil.getWebDriver(navegador, webDriverPath);
+                        logger.info("Acessando sites...");
+                        WebDriver webDriver = WebdriverUtil.getWebDriver(navegador.toString(), webDriverPath, browserExePath, porta, profilePath);
                         whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
                         whatsappService.acessarGoogleContatos(webDriver, linkRegistrarFalha, idAutomacao);
-                    }
 
-                    logger.info("Cadastrando contatos...");
-                    for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
-                        whatsappService.cadastrarContato(webDriver, pendenciaWhatsapp.getNumero());
-                    }
+                        logger.info("Cadastrando contatos...");
+                        for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
+                            whatsappService.cadastrarContato(webDriver, pendenciaWhatsapp.getNumero());
+                        }
 
-                    whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
+                        whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
 
-                    logger.info("Processando pendências...");
-                    for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
-                        whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
+                        logger.info("Processando pendências...");
+                        for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
+                            whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
+                        }
                     }
 
                     logger.info("Movendo pendências...");
