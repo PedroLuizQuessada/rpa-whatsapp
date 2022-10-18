@@ -91,7 +91,7 @@ public class RpaService {
                 else {
                     logger.info("Recuperando mensagens a serem enviadas...");
                     List<Planilha> planilhasMensagens = GoogleDriveUtil.recuperarPendencias(googleDrivePathMensagens);
-                    if (!planilhasMensagens.isEmpty()) {
+                    if (!planilhasMensagens.isEmpty() && !planilhasMensagens.get(0).getDados().isEmpty() && !planilhasMensagens.get(0).getDados().get(0).isEmpty() && planilhasMensagens.get(0).getDados().get(0).get(0).length() > 0) {
                         PendenciaWhatsapp.setTexto(planilhasMensagens.get(0).getDados().get(0).get(0));
                     }
                     List<File> imagensMensagens = GoogleDriveUtil.recuperarImagem(googleDrivePathMensagens);
