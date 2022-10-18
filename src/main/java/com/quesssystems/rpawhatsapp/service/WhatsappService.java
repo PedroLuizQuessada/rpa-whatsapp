@@ -42,9 +42,9 @@ public class WhatsappService {
             catch (ContaNaoLogadaException e) {
                 AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())));
                 JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
             }
         }
+        AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
     }
 
     public void acessarGoogleContatos(WebDriver webDriver, String linkRegistrarFalha, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException {
@@ -58,9 +58,9 @@ public class WhatsappService {
             catch (ContaNaoLogadaException e) {
                 AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())));
                 JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
             }
         }
+        AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
     }
 
     public void verificarContaLogada(WebDriver webDriver, String site, String xpath) throws ContaNaoLogadaException {
