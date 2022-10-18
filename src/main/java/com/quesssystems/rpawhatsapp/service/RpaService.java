@@ -136,7 +136,9 @@ public class RpaService {
                 logger.info("Automação fora do período de execução");
             }
 
-            AutomacaoApiUtil.executarRequisicao(linkRegistrarExecucao);
+            logger.info("Registrando execução...");
+            AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarExecucao, idAutomacao));
+            logger.info(String.format("Aguardando intervalo de %d minutos", intervaloMinutos));
             TimerUtil.aguardar(UnidadesMedidaTempoEnum.MINUTOS, intervaloMinutos);
         }
         catch (RecuperarDadosException | ArquivoException | TimerUtilException | MensagemVaziaException |
