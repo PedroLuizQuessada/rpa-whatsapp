@@ -65,7 +65,7 @@ public class WhatsappService {
 
     public void verificarContaLogada(WebDriver webDriver, String site, String xpath) throws ContaNaoLogadaException {
         try {
-            SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath(xpath));
+            SeleniumUtil.aguardarElementoVisivel(webDriver, 300, By.xpath(xpath));
         }
         catch (ElementoNaoEncontradoException e) {
             throw new ContaNaoLogadaException(site);
@@ -80,11 +80,12 @@ public class WhatsappService {
         SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//button[@aria-label='Salvar']")).click();
 
         try {
-            SeleniumUtil.aguardarElementosVisiveis(webDriver, 30, By.xpath("//span[contains(text(), 'Detalhes do contato')]"));
+            SeleniumUtil.aguardarElementoVisivel(webDriver, 60, By.xpath("//div[contains(text(), 'Novo contato criado')]"));
         }
         catch (ElementoNaoEncontradoException e) {
             throw new CadastrarContatoException(numero);
         }
+        SeleniumUtil.navegar(webDriver, googleContatosLink);
     }
 
     public void processarPendencia(WebDriver webDriver, PendenciaWhatsapp pendenciaWhatsapp) throws ElementoNaoEncontradoException, UrlInvalidaException, ContatoNaoCadastroException {
