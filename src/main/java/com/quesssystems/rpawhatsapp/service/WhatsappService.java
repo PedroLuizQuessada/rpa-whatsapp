@@ -1,12 +1,11 @@
 package com.quesssystems.rpawhatsapp.service;
 
 import com.quesssystems.rpawhatsapp.automacao.PendenciaWhatsapp;
-import com.quesssystems.rpawhatsapp.exceptions.CadastrarContatoException;
+import com.quesssystems.rpawhatsapp.exceptions.ArquivoNaoEncontradoException;
 import com.quesssystems.rpawhatsapp.exceptions.ContaNaoLogadaException;
 import com.quesssystems.rpawhatsapp.exceptions.ContatoNaoCadastroException;
-import exceptions.ElementoNaoEncontradoException;
-import exceptions.RecuperarDadosException;
-import exceptions.UrlInvalidaException;
+import enums.UnidadesMedidaTempoEnum;
+import exceptions.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
@@ -14,19 +13,19 @@ import org.openqa.selenium.WebElement;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import util.AutomacaoApiUtil;
+import util.RobotUtil;
 import util.SeleniumUtil;
+import util.TimerUtil;
 
 import javax.swing.*;
 import java.io.File;
+import java.util.List;
 
 @Service
 public class WhatsappService {
 
     @Value("${rpa.whatsapp.link}")
     private String whatsappLink;
-
-    @Value("${rpa.google-contatos.link}")
-    private String googleContatosLink;
 
     @Value("${rpa.texto-primeiro}")
     private Boolean textoPrimeiro;
@@ -36,7 +35,7 @@ public class WhatsappService {
 
         while (true) {
             try {
-                verificarContaLogada(webDriver, "Whatsapp Web", "//span[@data-testid='menu']");
+                RpaService.verificarContaLogada(webDriver, "Whatsapp Web", "//span[@data-testid='menu']");
                 break;
             }
             catch (ContaNaoLogadaException e) {
@@ -47,82 +46,67 @@ public class WhatsappService {
         AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
     }
 
-    public void acessarGoogleContatos(WebDriver webDriver, String linkRegistrarFalha, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException {
-        SeleniumUtil.navegar(webDriver, googleContatosLink);
-
-        while (true) {
-            try {
-                verificarContaLogada(webDriver, "Google Contatos", "//span[contains(text(), 'Contatos')]");
-                break;
-            }
-            catch (ContaNaoLogadaException e) {
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())));
-                JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-        AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
-    }
-
-    public void verificarContaLogada(WebDriver webDriver, String site, String xpath) throws ContaNaoLogadaException {
-        try {
-            SeleniumUtil.aguardarElementoVisivel(webDriver, 300, By.xpath(xpath));
-        }
-        catch (ElementoNaoEncontradoException e) {
-            throw new ContaNaoLogadaException(site);
-        }
-    }
-
-    public void cadastrarContato(WebDriver webDriver, String numero) throws UrlInvalidaException, ElementoNaoEncontradoException, CadastrarContatoException {
-        SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//button[@title='Adicionar novo contato']")).click();
-        SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//div[contains(text(), 'Criar um contato')]")).click();
-        SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath("//input[@aria-label='Nome']")).sendKeys(numero);
-        SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath("//input[@type='tel']")).sendKeys(numero);
-        SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//button[@aria-label='Salvar']")).click();
-
-        try {
-            SeleniumUtil.aguardarElementoVisivel(webDriver, 60, By.xpath("//div[contains(text(), 'Novo contato criado')]"));
-        }
-        catch (ElementoNaoEncontradoException e) {
-            throw new CadastrarContatoException(numero);
-        }
-        SeleniumUtil.navegar(webDriver, googleContatosLink);
-    }
-
-    public void processarPendencia(WebDriver webDriver, PendenciaWhatsapp pendenciaWhatsapp) throws ElementoNaoEncontradoException, UrlInvalidaException, ContatoNaoCadastroException {
+    public void processarPendencia(WebDriver webDriver, PendenciaWhatsapp pendenciaWhatsapp) throws ElementoNaoEncontradoException, UrlInvalidaException, ContatoNaoCadastroException, CaracterException, RobotException, TimerUtilException, ArquivoNaoEncontradoException {
         abrirConversa(webDriver, pendenciaWhatsapp.getNumero());
-        enviarMensagens(webDriver, PendenciaWhatsapp.getTexto(), PendenciaWhatsapp.getArquivo());
+        enviarMensagens(webDriver, PendenciaWhatsapp.getTextos(), PendenciaWhatsapp.getArquivos());
     }
 
-    private void abrirConversa(WebDriver webDriver, String numero) throws ElementoNaoEncontradoException, ContatoNaoCadastroException {
-        SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath("//div[@title='Caixa de texto de pesquisa']")).sendKeys(numero + Keys.ENTER);
+    private void abrirConversa(WebDriver webDriver, String numero) throws ElementoNaoEncontradoException, ContatoNaoCadastroException, TimerUtilException {
+        WebElement input = SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath("//div[@title='Caixa de texto de pesquisa']"));
+        input.sendKeys(numero);
         try {
-            SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath(String.format("//span[@title='%s']", numero))).click();
+            SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath(String.format("//span[@title='%s'] | //span[@title='%s']", numero, numero.substring(0, 8) + "-" + numero.substring(8))));
+            TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
         }
         catch (ElementoNaoEncontradoException e) {
             throw new ContatoNaoCadastroException(numero);
         }
 
-        SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath("//div[@title='Caixa de texto de pesquisa']")).clear();
+        input.sendKeys(Keys.ENTER);
+        TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 1);
+        input.clear();
     }
 
-    private void enviarMensagens(WebDriver webDriver, String texto, File arquivo) throws ElementoNaoEncontradoException {
+    private void enviarMensagens(WebDriver webDriver, List<String> textos, List<File> arquivos) throws ElementoNaoEncontradoException, RobotException, CaracterException, TimerUtilException, ArquivoNaoEncontradoException {
         WebElement input = SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath("//div[@title='Mensagem']"));
 
         if (textoPrimeiro) {
-            if (texto != null) {
-                input.sendKeys(texto);
+            if (textos != null) {
+                for (String texto : textos) {
+                    input.sendKeys(texto + Keys.ENTER);
+                }
             }
-            if (arquivo != null) {
-                input.sendKeys(arquivo.getAbsolutePath());
+            if (arquivos != null) {
+                for (File arquivo : arquivos) {
+                    enviarArquivo(webDriver, arquivo);
+                }
             }
         }
         else {
-            if (arquivo != null) {
-                input.sendKeys(arquivo.getAbsolutePath());
+            if (arquivos != null) {
+                for (File arquivo : arquivos) {
+                    enviarArquivo(webDriver, arquivo);
+                }
             }
-            if (texto != null) {
-                input.sendKeys(texto);
+            if (textos != null) {
+                for (String texto : textos) {
+                    input.sendKeys(texto + Keys.ENTER);
+                }
             }
+        }
+    }
+
+    private void enviarArquivo(WebDriver webDriver, File arquivo) throws ElementoNaoEncontradoException, CaracterException, RobotException, TimerUtilException, ArquivoNaoEncontradoException {
+        SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//span[@data-testid='clip']")).click();
+        SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//span[@data-testid='attach-image']")).click();
+        RobotUtil.escreverTexto(arquivo.getAbsolutePath());
+        RobotUtil.pressionarEnter();
+        TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 1);
+        try {
+            SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//span[@data-testid='send']")).click();
+        }
+        catch (ElementoNaoEncontradoException e) {
+            throw new ArquivoNaoEncontradoException(arquivo.getAbsolutePath());
         }
     }
 }

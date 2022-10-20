@@ -3,26 +3,28 @@ package com.quesssystems.rpawhatsapp.automacao;
 import automacao.Pendencia;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PendenciaWhatsapp extends Pendencia {
-    private static String texto;
-    private static File arquivo;
+    private static List<String> textos = new ArrayList<>();
+    private static List<File> arquivos = new ArrayList<>();
     private String numero;
 
-    public static String getTexto() {
-        return texto;
+    public static List<String> getTextos() {
+        return textos;
     }
 
-    public static void setTexto(String texto) {
-        PendenciaWhatsapp.texto = texto;
+    public static void addTexto(String texto) {
+        PendenciaWhatsapp.textos.add(texto);
     }
 
-    public static File getArquivo() {
-        return arquivo;
+    public static List<File> getArquivos() {
+        return arquivos;
     }
 
-    public static void setArquivo(File arquivo) {
-        PendenciaWhatsapp.arquivo = arquivo;
+    public static void addArquivo(File arquivo) {
+        PendenciaWhatsapp.arquivos.add(arquivo);
     }
 
     public String getNumero() {

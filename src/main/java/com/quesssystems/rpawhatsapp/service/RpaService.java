@@ -4,13 +4,12 @@ import automacao.AutomacaoApi;
 import automacao.Planilha;
 import com.quesssystems.rpawhatsapp.automacao.PendenciaWhatsapp;
 import com.quesssystems.rpawhatsapp.automacao.PendenciaUtil;
-import com.quesssystems.rpawhatsapp.exceptions.CadastrarContatoException;
-import com.quesssystems.rpawhatsapp.exceptions.ContatoNaoCadastroException;
-import com.quesssystems.rpawhatsapp.exceptions.MensagemVaziaException;
+import com.quesssystems.rpawhatsapp.exceptions.*;
 import enums.NavegadoresEnum;
 import enums.StatusEnum;
 import enums.UnidadesMedidaTempoEnum;
 import exceptions.*;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,9 +69,12 @@ public class RpaService {
 
     private final WhatsappService whatsappService;
 
-    public RpaService(PendenciaUtil pendenciaUtil, WhatsappService whatsappService) {
+    private final GoogleContatosService googleContatosService;
+
+    public RpaService(PendenciaUtil pendenciaUtil, WhatsappService whatsappService, GoogleContatosService googleContatosService) {
         this.pendenciaUtil = pendenciaUtil;
         this.whatsappService = whatsappService;
+        this.googleContatosService = googleContatosService;
     }
 
     public void iniciarAutomacao() {
@@ -98,15 +100,19 @@ public class RpaService {
                 else {
                     logger.info("Recuperando mensagens a serem enviadas...");
                     List<Planilha> planilhasMensagens = GoogleDriveUtil.recuperarPendencias(googleDrivePathMensagens);
-                    if (!planilhasMensagens.isEmpty() && !planilhasMensagens.get(0).getDados().isEmpty() && !planilhasMensagens.get(0).getDados().get(0).isEmpty() && planilhasMensagens.get(0).getDados().get(0).get(0).length() > 0) {
-                        PendenciaWhatsapp.setTexto(planilhasMensagens.get(0).getDados().get(0).get(0));
+                    if (!planilhasMensagens.isEmpty() && !planilhasMensagens.get(0).getDados().isEmpty()) {
+                        for (String texto : planilhasMensagens.get(0).getDados().get(0)) {
+                            if (texto.length() > 0) {
+                                PendenciaWhatsapp.addTexto(texto);
+                            }
+                        }
                     }
                     List<File> imagensMensagens = GoogleDriveUtil.recuperarImagem(googleDrivePathMensagens);
-                    if (!imagensMensagens.isEmpty()) {
-                        PendenciaWhatsapp.setArquivo(imagensMensagens.get(0));
+                    for (File imagemMensagem : imagensMensagens) {
+                        PendenciaWhatsapp.addArquivo(imagemMensagem);
                     }
 
-                    if (PendenciaWhatsapp.getTexto() == null && PendenciaWhatsapp.getArquivo() == null) {
+                    if (PendenciaWhatsapp.getTextos().isEmpty() && PendenciaWhatsapp.getArquivos().isEmpty()) {
                         throw new MensagemVaziaException();
                     }
 
@@ -114,16 +120,17 @@ public class RpaService {
                     for (Planilha planilha : planilhas) {
                         pendenciasWhatsapp.addAll(pendenciaUtil.planilhaToPendencias(planilha));
                     }
+                    googleContatosService.formataNumeros(pendenciasWhatsapp);
 
                     if (!pendenciasWhatsapp.isEmpty()) {
                         logger.info("Acessando sites...");
                         WebDriver webDriver = WebdriverUtil.getWebDriver(navegador.toString(), webDriverPath, browserExePath, porta, profilePath);
                         whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
-                        whatsappService.acessarGoogleContatos(webDriver, linkRegistrarFalha, idAutomacao);
+                        googleContatosService.acessarGoogleContatos(webDriver, linkRegistrarFalha, idAutomacao);
 
                         logger.info("Cadastrando contatos...");
                         for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
-                            whatsappService.cadastrarContato(webDriver, pendenciaWhatsapp.getNumero());
+                            googleContatosService.cadastrarContato(webDriver, pendenciaWhatsapp.getNumero());
                         }
 
                         whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
@@ -131,6 +138,7 @@ public class RpaService {
                         logger.info("Processando pendências...");
                         for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
                             whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
+                            TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
                         }
                     }
 
@@ -150,7 +158,8 @@ public class RpaService {
         }
         catch (RecuperarDadosException | ArquivoException | TimerUtilException | MensagemVaziaException |
                NavegadorNaoIdentificadoException | DriverException | UrlInvalidaException | ElementoNaoEncontradoException |
-               CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException | AutomacaoNaoIdentificadaException e) {
+               CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException | AutomacaoNaoIdentificadaException |
+               CaracterException | RobotException | ArquivoNaoEncontradoException e) {
             try {
                 AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())));
             }
@@ -158,6 +167,15 @@ public class RpaService {
                 JOptionPane.showMessageDialog(null, e1.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
             JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public static void verificarContaLogada(WebDriver webDriver, String site, String xpath) throws ContaNaoLogadaException {
+        try {
+            SeleniumUtil.aguardarElementoVisivel(webDriver, 300, By.xpath(xpath));
+        }
+        catch (ElementoNaoEncontradoException e) {
+            throw new ContaNaoLogadaException(site);
         }
     }
 }
