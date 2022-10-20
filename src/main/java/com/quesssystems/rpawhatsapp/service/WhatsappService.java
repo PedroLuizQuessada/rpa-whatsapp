@@ -30,7 +30,7 @@ public class WhatsappService {
     @Value("${rpa.texto-primeiro}")
     private Boolean textoPrimeiro;
 
-    public void acessarWhatsappWeb(WebDriver webDriver, String linkRegistrarFalha, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException {
+    public void acessarWhatsappWeb(WebDriver webDriver, String linkRegistrarFalha, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException, AutomacaoNaoIdentificadaException {
         SeleniumUtil.navegar(webDriver, whatsappLink);
 
         while (true) {
@@ -39,11 +39,11 @@ public class WhatsappService {
                 break;
             }
             catch (ContaNaoLogadaException e) {
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())));
+                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())), idAutomacao);
                 JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
-        AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
+        AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")), idAutomacao);
     }
 
     public void processarPendencia(WebDriver webDriver, PendenciaWhatsapp pendenciaWhatsapp) throws ElementoNaoEncontradoException, UrlInvalidaException, ContatoNaoCadastroException, CaracterException, RobotException, TimerUtilException, ArquivoNaoEncontradoException {

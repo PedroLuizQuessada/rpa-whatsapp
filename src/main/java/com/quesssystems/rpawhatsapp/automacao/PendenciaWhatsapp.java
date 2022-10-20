@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PendenciaWhatsapp extends Pendencia {
-    private static List<String> textos = new ArrayList<>();
-    private static List<File> arquivos = new ArrayList<>();
+    private static final List<String> textos = new ArrayList<>();
+    private static final List<File> arquivos = new ArrayList<>();
     private String numero;
 
     public static List<String> getTextos() {

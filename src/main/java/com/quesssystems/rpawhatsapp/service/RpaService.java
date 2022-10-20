@@ -6,7 +6,6 @@ import com.quesssystems.rpawhatsapp.automacao.PendenciaWhatsapp;
 import com.quesssystems.rpawhatsapp.automacao.PendenciaUtil;
 import com.quesssystems.rpawhatsapp.exceptions.*;
 import enums.NavegadoresEnum;
-import enums.StatusEnum;
 import enums.UnidadesMedidaTempoEnum;
 import exceptions.*;
 import org.openqa.selenium.By;
@@ -81,14 +80,10 @@ public class RpaService {
         logger.info("Iniciando automação...");
 
         try {
-            AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
+            AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")), idAutomacao);
 
             logger.info("Recuperando dados da automação...");
-            AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(String.format(linkRecuperarDados, idAutomacao));
-            if (automacaoApi.getStatus().equals(StatusEnum.NAOENCONTRADO)) {
-                throw new AutomacaoNaoIdentificadaException(idAutomacao);
-            }
-
+            AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(String.format(linkRecuperarDados, idAutomacao), idAutomacao);
             if (automacaoApi.isExecutar(Calendar.getInstance())) {
                 logger.info("Recuperando pendências...");
                 List<Planilha> planilhas = GoogleDriveUtil.recuperarPendencias(googleDrivePathPendentes);
@@ -152,19 +147,21 @@ public class RpaService {
             }
 
             logger.info("Registrando execução...");
-            AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarExecucao, idAutomacao));
+            AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarExecucao, idAutomacao), idAutomacao);
             logger.info(String.format("Aguardando intervalo de %d minutos", intervaloMinutos));
             TimerUtil.aguardar(UnidadesMedidaTempoEnum.MINUTOS, intervaloMinutos);
         }
         catch (RecuperarDadosException | ArquivoException | TimerUtilException | MensagemVaziaException |
                NavegadorNaoIdentificadoException | DriverException | UrlInvalidaException | ElementoNaoEncontradoException |
-               CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException | AutomacaoNaoIdentificadaException |
-               CaracterException | RobotException | ArquivoNaoEncontradoException e) {
-            try {
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())));
-            }
-            catch (RecuperarDadosException e1) {
-                JOptionPane.showMessageDialog(null, e1.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+               CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException | CaracterException |
+               RobotException | ArquivoNaoEncontradoException | AutomacaoNaoIdentificadaException e) {
+            if (!e.getClass().equals(AutomacaoNaoIdentificadaException.class)) {
+                try {
+                    AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())), idAutomacao);
+                }
+                catch (RecuperarDadosException | AutomacaoNaoIdentificadaException e1) {
+                    JOptionPane.showMessageDialog(null, e1.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                }
             }
             JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }

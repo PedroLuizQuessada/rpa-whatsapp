@@ -4,10 +4,7 @@ import com.quesssystems.rpawhatsapp.automacao.PendenciaWhatsapp;
 import com.quesssystems.rpawhatsapp.exceptions.CadastrarContatoException;
 import com.quesssystems.rpawhatsapp.exceptions.ContaNaoLogadaException;
 import enums.UnidadesMedidaTempoEnum;
-import exceptions.ElementoNaoEncontradoException;
-import exceptions.RecuperarDadosException;
-import exceptions.TimerUtilException;
-import exceptions.UrlInvalidaException;
+import exceptions.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +40,7 @@ public class GoogleContatosService {
         }
     }
 
-    public void acessarGoogleContatos(WebDriver webDriver, String linkRegistrarFalha, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException {
+    public void acessarGoogleContatos(WebDriver webDriver, String linkRegistrarFalha, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException, AutomacaoNaoIdentificadaException {
         SeleniumUtil.navegar(webDriver, googleContatosLink);
 
         while (true) {
@@ -52,11 +49,11 @@ public class GoogleContatosService {
                 break;
             }
             catch (ContaNaoLogadaException e) {
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())));
+                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())), idAutomacao);
                 JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
-        AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")));
+        AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")), idAutomacao);
     }
 
     public void cadastrarContato(WebDriver webDriver, String numero) throws UrlInvalidaException, ElementoNaoEncontradoException, CadastrarContatoException, TimerUtilException {
