@@ -135,6 +135,9 @@ public class RpaService {
                             whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
                             TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
                         }
+
+                        logger.info("Fechando navegador...");
+                        WebdriverUtil.fecharNavegador(webDriver);
                     }
 
                     logger.info("Movendo pendências...");
@@ -154,7 +157,7 @@ public class RpaService {
         catch (RecuperarDadosException | ArquivoException | TimerUtilException | MensagemVaziaException |
                NavegadorNaoIdentificadoException | DriverException | UrlInvalidaException | ElementoNaoEncontradoException |
                CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException | CaracterException |
-               RobotException | ArquivoNaoEncontradoException | AutomacaoNaoIdentificadaException e) {
+               RobotException | ArquivoNaoEncontradoException | AutomacaoNaoIdentificadaException | FecharNavegadorException e) {
             if (!e.getClass().equals(AutomacaoNaoIdentificadaException.class)) {
                 try {
                     AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())), idAutomacao);
