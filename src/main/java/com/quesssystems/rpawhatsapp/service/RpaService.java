@@ -80,79 +80,79 @@ public class RpaService {
         logger.info("Iniciando automação...");
 
         try {
-            AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")), idAutomacao);
+            while (true) {
+                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")), idAutomacao);
 
-            logger.info("Recuperando dados da automação...");
-            AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(String.format(linkRecuperarDados, idAutomacao), idAutomacao);
-            if (automacaoApi.isExecutar(Calendar.getInstance())) {
-                logger.info("Recuperando pendências...");
-                List<Planilha> planilhas = GoogleDriveUtil.recuperarPendencias(googleDrivePathPendentes);
-                List<PendenciaWhatsapp> pendenciasWhatsapp = new ArrayList<>();
+                logger.info("Recuperando dados da automação...");
+                AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(String.format(linkRecuperarDados, idAutomacao), idAutomacao);
+                if (automacaoApi.isExecutar(Calendar.getInstance())) {
+                    logger.info("Recuperando pendências...");
+                    List<Planilha> planilhas = GoogleDriveUtil.recuperarPendencias(googleDrivePathPendentes);
+                    List<PendenciaWhatsapp> pendenciasWhatsapp = new ArrayList<>();
 
-                if (planilhas.isEmpty()) {
-                    logger.info("Sem planilhas pendentes");
-                }
-                else {
-                    logger.info("Recuperando mensagens a serem enviadas...");
-                    List<Planilha> planilhasMensagens = GoogleDriveUtil.recuperarPendencias(googleDrivePathMensagens);
-                    if (!planilhasMensagens.isEmpty() && !planilhasMensagens.get(0).getDados().isEmpty()) {
-                        for (String texto : planilhasMensagens.get(0).getDados().get(0)) {
-                            if (texto.length() > 0) {
-                                PendenciaWhatsapp.addTexto(texto);
+                    if (planilhas.isEmpty()) {
+                        logger.info("Sem planilhas pendentes");
+                    } else {
+                        logger.info("Recuperando mensagens a serem enviadas...");
+                        List<Planilha> planilhasMensagens = GoogleDriveUtil.recuperarPendencias(googleDrivePathMensagens);
+                        if (!planilhasMensagens.isEmpty() && !planilhasMensagens.get(0).getDados().isEmpty()) {
+                            for (String texto : planilhasMensagens.get(0).getDados().get(0)) {
+                                if (texto.length() > 0) {
+                                    PendenciaWhatsapp.addTexto(texto);
+                                }
                             }
                         }
-                    }
-                    List<File> imagensMensagens = GoogleDriveUtil.recuperarImagem(googleDrivePathMensagens);
-                    for (File imagemMensagem : imagensMensagens) {
-                        PendenciaWhatsapp.addArquivo(imagemMensagem);
-                    }
-
-                    if (PendenciaWhatsapp.getTextos().isEmpty() && PendenciaWhatsapp.getArquivos().isEmpty()) {
-                        throw new MensagemVaziaException();
-                    }
-
-                    logger.info("Convertendo planilhas em pendências...");
-                    for (Planilha planilha : planilhas) {
-                        pendenciasWhatsapp.addAll(pendenciaUtil.planilhaToPendencias(planilha));
-                    }
-                    googleContatosService.formataNumeros(pendenciasWhatsapp);
-
-                    if (!pendenciasWhatsapp.isEmpty()) {
-                        logger.info("Acessando sites...");
-                        WebDriver webDriver = WebdriverUtil.getWebDriver(navegador.toString(), webDriverPath, browserExePath, porta, profilePath);
-                        whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
-                        googleContatosService.acessarGoogleContatos(webDriver, linkRegistrarFalha, idAutomacao);
-
-                        logger.info("Cadastrando contatos...");
-                        for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
-                            googleContatosService.cadastrarContato(webDriver, pendenciaWhatsapp.getNumero());
+                        List<File> imagensMensagens = GoogleDriveUtil.recuperarImagem(googleDrivePathMensagens);
+                        for (File imagemMensagem : imagensMensagens) {
+                            PendenciaWhatsapp.addArquivo(imagemMensagem);
                         }
 
-                        whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
-
-                        logger.info("Processando pendências...");
-                        for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
-                            whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
-                            TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
+                        if (PendenciaWhatsapp.getTextos().isEmpty() && PendenciaWhatsapp.getArquivos().isEmpty()) {
+                            throw new MensagemVaziaException();
                         }
 
-                        logger.info("Fechando navegador...");
-                        WebdriverUtil.fecharNavegador(webDriver);
-                    }
+                        logger.info("Convertendo planilhas em pendências...");
+                        for (Planilha planilha : planilhas) {
+                            pendenciasWhatsapp.addAll(pendenciaUtil.planilhaToPendencias(planilha));
+                        }
+                        googleContatosService.formataNumeros(pendenciasWhatsapp);
 
-                    logger.info("Movendo pendências...");
-                    String nomePlanilhaProcessada = googleDrivePathProcessados + "\\" + ConversorUtil.getDateToString(Calendar.getInstance(), ConversorUtil.getDateToString(Calendar.getInstance(), "dd_MM_yyyy_HH_mm_sss")) + ".xlsx";
-                    GoogleDriveUtil.moverPendencias(planilhas, new File(googleDrivePathPendentes), new File(nomePlanilhaProcessada));
+                        if (!pendenciasWhatsapp.isEmpty()) {
+                            logger.info("Acessando sites...");
+                            WebDriver webDriver = WebdriverUtil.getWebDriver(navegador.toString(), webDriverPath, browserExePath, porta, profilePath);
+                            whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
+                            googleContatosService.acessarGoogleContatos(webDriver, linkRegistrarFalha, idAutomacao);
+
+                            logger.info("Cadastrando contatos...");
+                            for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
+                                googleContatosService.cadastrarContato(webDriver, pendenciaWhatsapp.getNumero());
+                            }
+
+                            whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
+
+                            logger.info("Processando pendências...");
+                            for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
+                                whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
+                                TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
+                            }
+
+                            logger.info("Fechando navegador...");
+                            WebdriverUtil.fecharNavegador(webDriver);
+                        }
+
+                        logger.info("Movendo pendências...");
+                        String nomePlanilhaProcessada = googleDrivePathProcessados + "\\" + ConversorUtil.getDateToString(Calendar.getInstance(), ConversorUtil.getDateToString(Calendar.getInstance(), "dd_MM_yyyy_HH_mm_sss")) + ".xlsx";
+                        GoogleDriveUtil.moverPendencias(planilhas, new File(googleDrivePathPendentes), new File(nomePlanilhaProcessada));
+                    }
+                } else {
+                    logger.info("Automação fora do período de execução");
                 }
-            }
-            else {
-                logger.info("Automação fora do período de execução");
-            }
 
-            logger.info("Registrando execução...");
-            AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarExecucao, idAutomacao), idAutomacao);
-            logger.info(String.format("Aguardando intervalo de %d minutos", intervaloMinutos));
-            TimerUtil.aguardar(UnidadesMedidaTempoEnum.MINUTOS, intervaloMinutos);
+                logger.info("Registrando execução...");
+                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarExecucao, idAutomacao), idAutomacao);
+                logger.info(String.format("Aguardando intervalo de %d minutos", intervaloMinutos));
+                TimerUtil.aguardar(UnidadesMedidaTempoEnum.MINUTOS, intervaloMinutos);
+            }
         }
         catch (RecuperarDadosException | ArquivoException | TimerUtilException | MensagemVaziaException |
                NavegadorNaoIdentificadoException | DriverException | UrlInvalidaException | ElementoNaoEncontradoException |
