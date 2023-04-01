@@ -87,14 +87,14 @@ public class RpaService {
                 AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(String.format(linkRecuperarDados, idAutomacao), idAutomacao);
                 if (automacaoApi.isExecutar(Calendar.getInstance())) {
                     logger.info("Recuperando pendências...");
-                    List<Planilha> planilhas = GoogleDriveUtil.recuperarPendencias(googleDrivePathPendentes);
+                    List<Planilha> planilhas = GoogleDriveUtil.recuperarPendencias(googleDrivePathPendentes, true);
                     List<PendenciaWhatsapp> pendenciasWhatsapp = new ArrayList<>();
 
                     if (planilhas.isEmpty()) {
                         logger.info("Sem planilhas pendentes");
                     } else {
                         logger.info("Recuperando mensagens a serem enviadas...");
-                        List<Planilha> planilhasMensagens = GoogleDriveUtil.recuperarPendencias(googleDrivePathMensagens);
+                        List<Planilha> planilhasMensagens = GoogleDriveUtil.recuperarPendencias(googleDrivePathMensagens, false);
                         if (!planilhasMensagens.isEmpty() && !planilhasMensagens.get(0).getDados().isEmpty()) {
                             for (String texto : planilhasMensagens.get(0).getDados().get(0)) {
                                 if (texto.length() > 0) {
