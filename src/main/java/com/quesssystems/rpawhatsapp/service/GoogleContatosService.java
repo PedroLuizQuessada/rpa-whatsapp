@@ -14,6 +14,7 @@ import util.SeleniumUtil;
 import util.TimerUtil;
 
 import javax.swing.*;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -22,9 +23,16 @@ public class GoogleContatosService {
     @Value("${rpa.google-contatos.link}")
     private String googleContatosLink;
 
-    public void formataNumeros(List<PendenciaWhatsapp> pendenciasWhatsapp) {
+    public List<PendenciaWhatsapp> formataNumeros(List<PendenciaWhatsapp> pendenciasWhatsapp) {
+        List<PendenciaWhatsapp> pendenciaWhatsappsFormatadas = new ArrayList<>();
+
         for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
             StringBuilder numero = new StringBuilder(pendenciaWhatsapp.getNumero().replace(".", "").replace(" ", "").replace("-", "").replace("(", "").replace(")", ""));
+
+            if (numero.length() == 0) {
+                continue;
+            }
+
             if (numero.toString().contains("E")) {
                 numero = new StringBuilder(numero.substring(0, numero.indexOf("E")));
             }
@@ -37,7 +45,10 @@ public class GoogleContatosService {
             }
             numero = new StringBuilder(numero.substring(0, 2) + " " + numero.substring(2));
             pendenciaWhatsapp.setNumero(numero.toString());
+            pendenciaWhatsappsFormatadas.add(pendenciaWhatsapp);
         }
+
+        return pendenciaWhatsappsFormatadas;
     }
 
     public void acessarGoogleContatos(WebDriver webDriver, String linkRegistrarFalha, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException, AutomacaoNaoIdentificadaException {

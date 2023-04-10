@@ -11,7 +11,7 @@
 ### Instalação
 1) Pasta RPAWhatsapp do projeto
 2) Pasta para armazenar o perfil usado no ChromeDriver
-3) ChromeDriver na versão do Chrome da máquina
+3) ChromeDriver na versão do Chrome da máquina (necessário ser versão 110 ou anterior)
 4) Arquivo iniciar.bat com o caminho do arquivo application.properties
 
 <br>

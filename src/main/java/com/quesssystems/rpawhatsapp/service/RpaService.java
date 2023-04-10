@@ -115,7 +115,7 @@ public class RpaService {
                         for (Planilha planilha : planilhas) {
                             pendenciasWhatsapp.addAll(pendenciaUtil.planilhaToPendencias(planilha));
                         }
-                        googleContatosService.formataNumeros(pendenciasWhatsapp);
+                        pendenciasWhatsapp = googleContatosService.formataNumeros(pendenciasWhatsapp);
 
                         if (!pendenciasWhatsapp.isEmpty()) {
                             logger.info("Acessando sites...");
