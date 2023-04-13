@@ -2,6 +2,7 @@ package com.quesssystems.rpawhatsapp.service;
 
 import automacao.AutomacaoApi;
 import automacao.Planilha;
+import automacao.Requisicao;
 import com.quesssystems.rpawhatsapp.automacao.PendenciaWhatsapp;
 import com.quesssystems.rpawhatsapp.automacao.PendenciaUtil;
 import com.quesssystems.rpawhatsapp.exceptions.*;
@@ -29,11 +30,8 @@ public class RpaService {
     @Value("${api.recuperar-dados.link}")
     private String linkRecuperarDados;
 
-    @Value("${api.registrar-falha.link}")
-    private String linkRegistrarFalha;
-
-    @Value("${api.registrar-execucao.link}")
-    private String linkRegistrarExecucao;
+    @Value("${api.registrar-log.link}")
+    private String linkRegistrarLog;
 
     @Value("${api.id-automacao}")
     private Integer idAutomacao;
@@ -46,6 +44,9 @@ public class RpaService {
 
     @Value("${google-drive.path.processados}")
     private String googleDrivePathProcessados;
+
+    @Value("${rpa.token}")
+    private String token;
 
     @Value("${rpa.intervalo-minutos}")
     private Integer intervaloMinutos;
@@ -81,10 +82,8 @@ public class RpaService {
 
         try {
             while (true) {
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")), idAutomacao);
-
                 logger.info("Recuperando dados da automação...");
-                AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(String.format(linkRecuperarDados, idAutomacao), idAutomacao);
+                AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRecuperarDados, token, idAutomacao, null));
                 if (automacaoApi.isExecutar(Calendar.getInstance())) {
                     logger.info("Recuperando pendências...");
                     List<Planilha> planilhas = GoogleDriveUtil.recuperarPendencias(googleDrivePathPendentes, true);
@@ -120,15 +119,15 @@ public class RpaService {
                         if (!pendenciasWhatsapp.isEmpty()) {
                             logger.info("Acessando sites...");
                             WebDriver webDriver = WebdriverUtil.getWebDriver(navegador.toString(), webDriverPath, browserExePath, porta, profilePath);
-                            whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
-                            googleContatosService.acessarGoogleContatos(webDriver, linkRegistrarFalha, idAutomacao);
+                            whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarLog, token, idAutomacao);
+                            googleContatosService.acessarGoogleContatos(webDriver, linkRegistrarLog, token, idAutomacao);
 
                             logger.info("Cadastrando contatos...");
                             for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
                                 googleContatosService.cadastrarContato(webDriver, pendenciaWhatsapp.getNumero());
                             }
 
-                            whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarFalha, idAutomacao);
+                            whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarLog, token, idAutomacao);
 
                             logger.info("Processando pendências...");
                             for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
@@ -149,7 +148,7 @@ public class RpaService {
                 }
 
                 logger.info("Registrando execução...");
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarExecucao, idAutomacao), idAutomacao);
+                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, "Automação finalizada"));
                 logger.info(String.format("Aguardando intervalo de %d minutos", intervaloMinutos));
                 TimerUtil.aguardar(UnidadesMedidaTempoEnum.MINUTOS, intervaloMinutos);
             }
@@ -157,12 +156,13 @@ public class RpaService {
         catch (RecuperarDadosException | ArquivoException | TimerUtilException | MensagemVaziaException |
                NavegadorNaoIdentificadoException | DriverException | UrlInvalidaException | ElementoNaoEncontradoException |
                CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException | CaracterException |
-               RobotException | ArquivoNaoEncontradoException | AutomacaoNaoIdentificadaException | FecharNavegadorException e) {
-            if (!e.getClass().equals(AutomacaoNaoIdentificadaException.class)) {
+               RobotException | ArquivoNaoEncontradoException | AutomacaoNaoIdentificadaException | FecharNavegadorException |
+               TokenInvalidoException | MensagemInvalidaException | RequisicaoException e) {
+            if (!e.getClass().equals(AutomacaoNaoIdentificadaException.class) && !e.getClass().equals(TokenInvalidoException.class)) {
                 try {
-                    AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())), idAutomacao);
+                    AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, String.format("Falha: %s", e.getMessage())));
                 }
-                catch (RecuperarDadosException | AutomacaoNaoIdentificadaException e1) {
+                catch (RecuperarDadosException | AutomacaoNaoIdentificadaException | RequisicaoException | TokenInvalidoException | MensagemInvalidaException e1) {
                     JOptionPane.showMessageDialog(null, e1.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
                 }
             }

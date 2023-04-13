@@ -1,5 +1,6 @@
 package com.quesssystems.rpawhatsapp.service;
 
+import automacao.Requisicao;
 import com.quesssystems.rpawhatsapp.automacao.PendenciaWhatsapp;
 import com.quesssystems.rpawhatsapp.exceptions.CadastrarContatoException;
 import com.quesssystems.rpawhatsapp.exceptions.ContaNaoLogadaException;
@@ -51,7 +52,7 @@ public class GoogleContatosService {
         return pendenciaWhatsappsFormatadas;
     }
 
-    public void acessarGoogleContatos(WebDriver webDriver, String linkRegistrarFalha, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException, AutomacaoNaoIdentificadaException {
+    public void acessarGoogleContatos(WebDriver webDriver, String linkRegistrarLog, String token, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException, AutomacaoNaoIdentificadaException, MensagemInvalidaException, TokenInvalidoException, RequisicaoException {
         SeleniumUtil.navegar(webDriver, googleContatosLink);
 
         while (true) {
@@ -60,11 +61,10 @@ public class GoogleContatosService {
                 break;
             }
             catch (ContaNaoLogadaException e) {
-                AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(e.getMessage())), idAutomacao);
+                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, e.getMessage()));
                 JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
-        AutomacaoApiUtil.executarRequisicao(String.format(linkRegistrarFalha, idAutomacao, AutomacaoApiUtil.converterMensagemParaRequisicao(" ")), idAutomacao);
     }
 
     public void cadastrarContato(WebDriver webDriver, String numero) throws UrlInvalidaException, ElementoNaoEncontradoException, CadastrarContatoException, TimerUtilException {

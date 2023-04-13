@@ -22,9 +22,9 @@
 1) rpa.intervalo-minutos: número de minutos que serão aguardados entre uma execução e outra da automação
 2) rpa.texto-primeiro: "true" para enviar primeiro as mensagens de texto e depois as imagens ou "false" para o contrário
 ### Técnicas
-1) api.recuperar-dados.link: link ao endpoint do Sistemato para recuperar dados da automação
-2) api.registrar-falha.link: link ao endpoint do Sistemato para registrar uma falha de execução da automação
-3) api.registrar-execucao.link: link ao endpoint do Sistemato para registrar uma execução da automação
+1) rpa.token: token para acesso aos endpoints do Sistemato
+2) api.recuperar-dados.link: link ao endpoint do Sistemato para recuperar dados da automação
+3) api.registrar-log.link: link ao endpoint do Sistemato para registrar logs da automação
 4) api.id-automacao: ID da automação no Sistemato
 5) google-drive.path.pendentes: caminho até a pasta "Pendentes" do GoogleDrive da automação
 6) google-drive.path.mensagens: caminho até a pasta "Mensagens" do GoogleDrive da automação
