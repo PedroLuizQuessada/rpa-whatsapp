@@ -127,10 +127,32 @@ public class RpaService {
                                 googleContatosService.cadastrarContato(webDriver, pendenciaWhatsapp.getNumero());
                             }
 
-                            whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarLog, token, idAutomacao);
-
                             logger.info("Processando pendências...");
+                            logger.info("Realizando sincronização de contatos...");
+                            boolean primeiraPendenciaProcessada = false;
+                            for (int i = 0; i < 200; i++) {
+                                whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarLog, token, idAutomacao);
+
+                                try {
+                                    whatsappService.processarPendencia(webDriver, pendenciasWhatsapp.get(0));
+                                    TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
+                                    primeiraPendenciaProcessada = true;
+                                    break;
+                                }
+                                catch (ContatoNaoCadastroException e) {
+                                    TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 30);
+                                }
+                            }
+
+                            if (!primeiraPendenciaProcessada) {
+                                throw new ContatoNaoCadastroException(pendenciasWhatsapp.get(0).getNumero());
+                            }
+
+                            logger.info("Sincronização de contatos realizada, processando resto das pendências...");
                             for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
+                                if (pendenciasWhatsapp.indexOf(pendenciaWhatsapp) == 0) {
+                                    continue;
+                                }
                                 whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
                                 TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
                             }
