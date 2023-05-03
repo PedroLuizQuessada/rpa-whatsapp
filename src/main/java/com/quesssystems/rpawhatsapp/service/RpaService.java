@@ -1,7 +1,6 @@
 package com.quesssystems.rpawhatsapp.service;
 
 import automacao.AutomacaoApi;
-import automacao.Planilha;
 import automacao.Requisicao;
 import com.quesssystems.rpawhatsapp.automacao.PendenciaWhatsapp;
 import com.quesssystems.rpawhatsapp.automacao.PendenciaUtil;
@@ -19,9 +18,7 @@ import util.*;
 
 import javax.swing.*;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class RpaService {
@@ -33,17 +30,11 @@ public class RpaService {
     @Value("${api.registrar-log.link}")
     private String linkRegistrarLog;
 
+    @Value("${api.processar-pendencia.link}")
+    private String linkProcessarPendencia;
+
     @Value("${api.id-automacao}")
     private Integer idAutomacao;
-
-    @Value("${google-drive.path.pendentes}")
-    private String googleDrivePathPendentes;
-
-    @Value("${google-drive.path.mensagens}")
-    private String googleDrivePathMensagens;
-
-    @Value("${google-drive.path.processados}")
-    private String googleDrivePathProcessados;
 
     @Value("${rpa.token}")
     private String token;
@@ -62,6 +53,9 @@ public class RpaService {
 
     @Value("${rpa.profile.path}")
     private String profilePath;
+
+    @Value("${rpa.arquivos.path}")
+    private String arquivosPath;
 
     private final NavegadoresEnum navegador = NavegadoresEnum.CHROME;
 
@@ -83,27 +77,22 @@ public class RpaService {
         try {
             while (true) {
                 logger.info("Recuperando dados da automação...");
-                AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRecuperarDados, token, idAutomacao, null));
+                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, "Recuperando dados da automação", null));
+                AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRecuperarDados, token, idAutomacao, null, null));
                 if (automacaoApi.isExecutar(Calendar.getInstance())) {
                     logger.info("Recuperando pendências...");
-                    List<Planilha> planilhas = GoogleDriveUtil.recuperarPendencias(googleDrivePathPendentes, true);
-                    List<PendenciaWhatsapp> pendenciasWhatsapp = new ArrayList<>();
 
-                    if (planilhas.isEmpty()) {
-                        logger.info("Sem planilhas pendentes");
+                    if (automacaoApi.getPendencias() == null || automacaoApi.getPendencias().isEmpty()) {
+                        logger.info("Sem pendências");
                     } else {
                         logger.info("Recuperando mensagens a serem enviadas...");
-                        List<Planilha> planilhasMensagens = GoogleDriveUtil.recuperarPendencias(googleDrivePathMensagens, false);
-                        if (!planilhasMensagens.isEmpty() && !planilhasMensagens.get(0).getDados().isEmpty()) {
-                            for (String texto : planilhasMensagens.get(0).getDados().get(0)) {
-                                if (texto.length() > 0) {
-                                    PendenciaWhatsapp.addTexto(texto);
-                                }
+                        if (automacaoApi.getTexto() != null && automacaoApi.getTexto().length() > 0) {
+                            for (String texto : automacaoApi.getTexto().split(";")) {
+                                PendenciaWhatsapp.addTexto(texto);
                             }
                         }
-                        List<File> imagensMensagens = GoogleDriveUtil.recuperarImagem(googleDrivePathMensagens);
-                        for (File imagemMensagem : imagensMensagens) {
-                            PendenciaWhatsapp.addArquivo(imagemMensagem);
+                        for (File arquivo : Objects.requireNonNull(new File(arquivosPath).listFiles())) {
+                            PendenciaWhatsapp.addArquivo(arquivo);
                         }
 
                         if (PendenciaWhatsapp.getTextos().isEmpty() && PendenciaWhatsapp.getArquivos().isEmpty()) {
@@ -111,9 +100,7 @@ public class RpaService {
                         }
 
                         logger.info("Convertendo planilhas em pendências...");
-                        for (Planilha planilha : planilhas) {
-                            pendenciasWhatsapp.addAll(pendenciaUtil.planilhaToPendencias(planilha));
-                        }
+                        List<PendenciaWhatsapp> pendenciasWhatsapp = new ArrayList<>(pendenciaUtil.converterPendencia(automacaoApi, idAutomacao));
                         pendenciasWhatsapp = googleContatosService.formataNumeros(pendenciasWhatsapp);
 
                         if (!pendenciasWhatsapp.isEmpty()) {
@@ -137,6 +124,8 @@ public class RpaService {
                                     whatsappService.processarPendencia(webDriver, pendenciasWhatsapp.get(0));
                                     TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
                                     primeiraPendenciaProcessada = true;
+                                    logger.info("Registrando processamento da pendência...");
+                                    AutomacaoApiUtil.executarRequisicao(new Requisicao(linkProcessarPendencia, token, idAutomacao, null, pendenciasWhatsapp.get(0).getId()));
                                     break;
                                 }
                                 catch (ContatoNaoCadastroException e) {
@@ -155,34 +144,32 @@ public class RpaService {
                                 }
                                 whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
                                 TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
+                                logger.info("Registrando processamento da pendência...");
+                                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkProcessarPendencia, token, idAutomacao, null, pendenciaWhatsapp.getId()));
                             }
 
                             logger.info("Fechando navegador...");
                             WebdriverUtil.fecharNavegador(webDriver);
                         }
-
-                        logger.info("Movendo pendências...");
-                        String nomePlanilhaProcessada = googleDrivePathProcessados + "\\" + ConversorUtil.getDateToString(Calendar.getInstance(), ConversorUtil.getDateToString(Calendar.getInstance(), "dd_MM_yyyy_HH_mm_sss")) + ".xlsx";
-                        GoogleDriveUtil.moverPendencias(planilhas, new File(googleDrivePathPendentes), new File(nomePlanilhaProcessada));
                     }
                 } else {
                     logger.info("Automação fora do período de execução");
                 }
 
                 logger.info("Registrando execução...");
-                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, "Automação finalizada"));
+                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, "Automação finalizada", null));
                 logger.info(String.format("Aguardando intervalo de %d minutos", intervaloMinutos));
                 TimerUtil.aguardar(UnidadesMedidaTempoEnum.MINUTOS, intervaloMinutos);
             }
         }
-        catch (RecuperarDadosException | ArquivoException | TimerUtilException | MensagemVaziaException |
+        catch (RecuperarDadosException | TimerUtilException | MensagemVaziaException |
                NavegadorNaoIdentificadoException | DriverException | UrlInvalidaException | ElementoNaoEncontradoException |
-               CadastrarContatoException | ContatoNaoCadastroException | MoverPendenciaException | CaracterException |
+               CadastrarContatoException | ContatoNaoCadastroException | CaracterException |
                RobotException | ArquivoNaoEncontradoException | AutomacaoNaoIdentificadaException | FecharNavegadorException |
-               TokenInvalidoException | MensagemInvalidaException | RequisicaoException e) {
+               TokenInvalidoException | MensagemInvalidaException | RequisicaoException | ConversaoPendenciaException e) {
             if (!e.getClass().equals(AutomacaoNaoIdentificadaException.class) && !e.getClass().equals(TokenInvalidoException.class)) {
                 try {
-                    AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, String.format("Falha: %s", e.getMessage())));
+                    AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, String.format("Falha: %s", e.getMessage()), null));
                 }
                 catch (RecuperarDadosException | AutomacaoNaoIdentificadaException | RequisicaoException | TokenInvalidoException | MensagemInvalidaException e1) {
                     JOptionPane.showMessageDialog(null, e1.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);

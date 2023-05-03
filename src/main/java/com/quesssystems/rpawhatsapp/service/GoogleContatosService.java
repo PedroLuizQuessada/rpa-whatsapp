@@ -61,7 +61,7 @@ public class GoogleContatosService {
                 break;
             }
             catch (ContaNaoLogadaException e) {
-                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, e.getMessage()));
+                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, e.getMessage(), null));
                 JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
