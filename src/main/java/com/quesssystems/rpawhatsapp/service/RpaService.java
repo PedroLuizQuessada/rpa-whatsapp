@@ -92,7 +92,9 @@ public class RpaService {
                             }
                         }
                         for (File arquivo : Objects.requireNonNull(new File(arquivosPath).listFiles())) {
-                            PendenciaWhatsapp.addArquivo(arquivo);
+                            if (arquivo.getName().substring(arquivo.getName().lastIndexOf('.')).equals(".png") ||
+                                    arquivo.getName().substring(arquivo.getName().lastIndexOf('.')).equals(".jpeg"))
+                                PendenciaWhatsapp.addArquivo(arquivo);
                         }
 
                         if (PendenciaWhatsapp.getTextos().isEmpty() && PendenciaWhatsapp.getArquivos().isEmpty()) {
