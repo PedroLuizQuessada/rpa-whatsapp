@@ -11,6 +11,7 @@
 1) Pasta RPAWhatsapp do projeto
 2) ChromeDriver na versão do Chrome da máquina (necessário ser versão 110 ou anterior)
 3) Arquivo iniciar.bat com o caminho do arquivo application.properties
+4) Pasta com perfil que será usado no Google Chrome
 
 <br>
 
