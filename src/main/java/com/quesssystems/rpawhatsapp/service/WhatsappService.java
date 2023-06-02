@@ -3,8 +3,7 @@ package com.quesssystems.rpawhatsapp.service;
 import automacao.Requisicao;
 import com.quesssystems.rpawhatsapp.automacao.PendenciaWhatsapp;
 import com.quesssystems.rpawhatsapp.exceptions.ArquivoNaoEncontradoException;
-import com.quesssystems.rpawhatsapp.exceptions.ContaNaoLogadaException;
-import com.quesssystems.rpawhatsapp.exceptions.ContatoNaoCadastroException;
+import com.quesssystems.rpawhatsapp.exceptions.ContatoNaoEncontradoException;
 import enums.UnidadesMedidaTempoEnum;
 import exceptions.*;
 import org.openqa.selenium.By;
@@ -25,6 +24,9 @@ import java.util.List;
 @Service
 public class WhatsappService {
 
+    @Value("${rpa.chatdireto.link}")
+    private String chatDiretoLink;
+
     @Value("${rpa.whatsapp.link}")
     private String whatsappLink;
 
@@ -36,35 +38,34 @@ public class WhatsappService {
 
         while (true) {
             try {
-                RpaService.verificarContaLogada(webDriver, "Whatsapp Web", "//span[@data-testid='menu']");
+                SeleniumUtil.aguardarElementoVisivel(webDriver, 300, By.xpath("//span[@data-testid='menu']"));
                 break;
             }
-            catch (ContaNaoLogadaException e) {
-                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, e.getMessage(), null));
-                JOptionPane.showMessageDialog(null, e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            catch (ElementoNaoEncontradoException e) {
+                String mensagem = "Conta do WhatsApp não está logada";
+                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, mensagem, null));
+                JOptionPane.showMessageDialog(null, mensagem, "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-    public void processarPendencia(WebDriver webDriver, PendenciaWhatsapp pendenciaWhatsapp) throws ElementoNaoEncontradoException, UrlInvalidaException, ContatoNaoCadastroException, CaracterException, RobotException, TimerUtilException, ArquivoNaoEncontradoException {
+    public void processarPendencia(WebDriver webDriver, PendenciaWhatsapp pendenciaWhatsapp) throws ElementoNaoEncontradoException, UrlInvalidaException, ContatoNaoEncontradoException, CaracterException, RobotException, TimerUtilException, ArquivoNaoEncontradoException {
         abrirConversa(webDriver, pendenciaWhatsapp.getNumero());
         enviarMensagens(webDriver, PendenciaWhatsapp.getTextos(), PendenciaWhatsapp.getArquivos());
     }
 
-    private void abrirConversa(WebDriver webDriver, String numero) throws ElementoNaoEncontradoException, ContatoNaoCadastroException, TimerUtilException {
-        WebElement input = SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath("//div[@title='Caixa de texto de pesquisa']"));
-        input.sendKeys(numero);
+    private void abrirConversa(WebDriver webDriver, String numero) throws ElementoNaoEncontradoException, ContatoNaoEncontradoException, TimerUtilException, UrlInvalidaException {
+        SeleniumUtil.navegar(webDriver, chatDiretoLink);
+        SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath("//input[@name='telefone']")).sendKeys(numero);
+        SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//button[contains(text(), 'Abrir WhatsApp!')]")).click();
+
         try {
-            SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath(String.format("//span[@title='%s'] | //span[@title='%s']", numero, numero.substring(0, 8) + "-" + numero.substring(8))));
+            SeleniumUtil.aguardarElementoVisivel(webDriver, 60, By.xpath("//button[@aria-label='Mensagem de voz']"));
             TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
         }
         catch (ElementoNaoEncontradoException e) {
-            throw new ContatoNaoCadastroException(numero);
+            throw new ContatoNaoEncontradoException(numero);
         }
-
-        input.sendKeys(Keys.ENTER);
-        TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 1);
-        input.clear();
     }
 
     private void enviarMensagens(WebDriver webDriver, List<String> textos, List<File> arquivos) throws ElementoNaoEncontradoException, RobotException, CaracterException, TimerUtilException, ArquivoNaoEncontradoException {

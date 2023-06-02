@@ -8,7 +8,6 @@ import com.quesssystems.rpawhatsapp.exceptions.*;
 import enums.NavegadoresEnum;
 import enums.UnidadesMedidaTempoEnum;
 import exceptions.*;
-import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,12 +62,9 @@ public class RpaService {
 
     private final WhatsappService whatsappService;
 
-    private final GoogleContatosService googleContatosService;
-
-    public RpaService(PendenciaUtil pendenciaUtil, WhatsappService whatsappService, GoogleContatosService googleContatosService) {
+    public RpaService(PendenciaUtil pendenciaUtil, WhatsappService whatsappService) {
         this.pendenciaUtil = pendenciaUtil;
         this.whatsappService = whatsappService;
-        this.googleContatosService = googleContatosService;
     }
 
     public void iniciarAutomacao() {
@@ -80,8 +76,6 @@ public class RpaService {
                 AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, "Recuperando dados da automação", null));
                 AutomacaoApi automacaoApi = AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRecuperarDados, token, idAutomacao, null, null));
                 if (automacaoApi.isExecutar(Calendar.getInstance())) {
-                    logger.info("Recuperando pendências...");
-
                     if (automacaoApi.getPendencias() == null || automacaoApi.getPendencias().isEmpty()) {
                         logger.info("Sem pendências");
                     } else {
@@ -103,47 +97,15 @@ public class RpaService {
 
                         logger.info("Convertendo planilhas em pendências...");
                         List<PendenciaWhatsapp> pendenciasWhatsapp = new ArrayList<>(pendenciaUtil.converterPendencia(automacaoApi, idAutomacao));
-                        pendenciasWhatsapp = googleContatosService.formataNumeros(pendenciasWhatsapp);
+                        pendenciasWhatsapp = formataNumeros(pendenciasWhatsapp);
 
                         if (!pendenciasWhatsapp.isEmpty()) {
-                            logger.info("Acessando sites...");
+                            logger.info("Acessando site...");
                             WebDriver webDriver = WebdriverUtil.getWebDriver(navegador.toString(), webDriverPath, browserExePath, porta, profilePath);
                             whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarLog, token, idAutomacao);
-                            googleContatosService.acessarGoogleContatos(webDriver, linkRegistrarLog, token, idAutomacao);
-
-                            logger.info("Cadastrando contatos...");
-                            for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
-                                googleContatosService.cadastrarContato(webDriver, pendenciaWhatsapp.getNumero());
-                            }
 
                             logger.info("Processando pendências...");
-                            logger.info("Realizando sincronização de contatos...");
-                            boolean primeiraPendenciaProcessada = false;
-                            for (int i = 0; i < 200; i++) {
-                                whatsappService.acessarWhatsappWeb(webDriver, linkRegistrarLog, token, idAutomacao);
-
-                                try {
-                                    whatsappService.processarPendencia(webDriver, pendenciasWhatsapp.get(0));
-                                    TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
-                                    primeiraPendenciaProcessada = true;
-                                    logger.info("Registrando processamento da pendência...");
-                                    AutomacaoApiUtil.executarRequisicao(new Requisicao(linkProcessarPendencia, token, idAutomacao, null, pendenciasWhatsapp.get(0).getId()));
-                                    break;
-                                }
-                                catch (ContatoNaoCadastroException e) {
-                                    TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 30);
-                                }
-                            }
-
-                            if (!primeiraPendenciaProcessada) {
-                                throw new ContatoNaoCadastroException(pendenciasWhatsapp.get(0).getNumero());
-                            }
-
-                            logger.info("Sincronização de contatos realizada, processando resto das pendências...");
                             for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
-                                if (pendenciasWhatsapp.indexOf(pendenciaWhatsapp) == 0) {
-                                    continue;
-                                }
                                 whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
                                 TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
                                 logger.info("Registrando processamento da pendência...");
@@ -152,21 +114,21 @@ public class RpaService {
 
                             logger.info("Fechando navegador...");
                             WebdriverUtil.fecharNavegador(webDriver);
+                            logger.info("Registrando execução...");
+                            AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, "Automação finalizada", null));
                         }
                     }
                 } else {
                     logger.info("Automação fora do período de execução");
                 }
 
-                logger.info("Registrando execução...");
-                AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, "Automação finalizada", null));
                 logger.info(String.format("Aguardando intervalo de %d minutos", intervaloMinutos));
                 TimerUtil.aguardar(UnidadesMedidaTempoEnum.MINUTOS, intervaloMinutos);
             }
         }
         catch (RecuperarDadosException | TimerUtilException | MensagemVaziaException |
                NavegadorNaoIdentificadoException | DriverException | UrlInvalidaException | ElementoNaoEncontradoException |
-               CadastrarContatoException | ContatoNaoCadastroException | CaracterException |
+               ContatoNaoEncontradoException | CaracterException |
                RobotException | ArquivoNaoEncontradoException | AutomacaoNaoIdentificadaException | FecharNavegadorException |
                TokenInvalidoException | MensagemInvalidaException | RequisicaoException | ConversaoPendenciaException e) {
             if (!e.getClass().equals(AutomacaoNaoIdentificadaException.class) && !e.getClass().equals(TokenInvalidoException.class)) {
@@ -181,12 +143,31 @@ public class RpaService {
         }
     }
 
-    public static void verificarContaLogada(WebDriver webDriver, String site, String xpath) throws ContaNaoLogadaException {
-        try {
-            SeleniumUtil.aguardarElementoVisivel(webDriver, 300, By.xpath(xpath));
+    private List<PendenciaWhatsapp> formataNumeros(List<PendenciaWhatsapp> pendenciasWhatsapp) {
+        List<PendenciaWhatsapp> pendenciaWhatsappsFormatadas = new ArrayList<>();
+
+        for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
+            StringBuilder numero = new StringBuilder(pendenciaWhatsapp.getNumero().replace(".", "").replace(" ", "").replace("-", "").replace("(", "").replace(")", ""));
+
+            if (numero.length() == 0) {
+                continue;
+            }
+
+            if (numero.toString().contains("E")) {
+                numero = new StringBuilder(numero.substring(0, numero.indexOf("E")));
+            }
+
+            int numZeros = 11 - numero.toString().length();
+            if (numZeros > 0) {
+                for (int i = 0; i < numZeros; i++) {
+                    numero.append("0");
+                }
+            }
+            numero = new StringBuilder(numero.substring(0, 2) + " " + numero.substring(2));
+            pendenciaWhatsapp.setNumero(numero.toString());
+            pendenciaWhatsappsFormatadas.add(pendenciaWhatsapp);
         }
-        catch (ElementoNaoEncontradoException e) {
-            throw new ContaNaoLogadaException(site);
-        }
+
+        return pendenciaWhatsappsFormatadas;
     }
 }
