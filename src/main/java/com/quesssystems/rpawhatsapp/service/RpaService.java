@@ -16,30 +16,29 @@ import org.springframework.stereotype.Service;
 import util.*;
 
 import javax.swing.*;
-import java.io.File;
 import java.util.*;
 
 @Service
 public class RpaService {
     private final Logger logger = LoggerFactory.getLogger(RpaService.class);
 
-    @Value("${api.recuperar-dados.link}")
-    private String linkRecuperarDados;
-
-    @Value("${api.registrar-log.link}")
-    private String linkRegistrarLog;
-
-    @Value("${api.processar-pendencia.link}")
-    private String linkProcessarPendencia;
+    @Value("${api.nome-ambiente}")
+    private String nomeAmbiente;
+    private String linkRecuperarDados = "https://sistemato-%s.herokuapp.com/sistemato/recuperardados";
+    private String linkRegistrarLog = "https://sistemato-%s.herokuapp.com/sistemato/registrarlog";
+    private String linkProcessarPendencia = "https://sistemato-%s.herokuapp.com/sistemato/processarpendencia";
 
     @Value("${api.id-automacao}")
     private Integer idAutomacao;
 
-    @Value("${rpa.token}")
+    @Value("${api.token}")
     private String token;
 
     @Value("${rpa.intervalo-minutos}")
     private Integer intervaloMinutos;
+
+    @Value("${rpa.parar-quando-nao-encontrar-contato}")
+    private Boolean pararContatoNaoEncontrado;
 
     @Value("${rpa.webdriver.path}")
     private String webDriverPath;
@@ -69,6 +68,7 @@ public class RpaService {
 
     public void iniciarAutomacao() {
         logger.info("Iniciando automação...");
+        ajustaLinks();
 
         try {
             while (true) {
@@ -80,24 +80,14 @@ public class RpaService {
                         logger.info("Sem pendências");
                     } else {
                         logger.info("Recuperando mensagens a serem enviadas...");
-                        if (automacaoApi.getTexto() != null && automacaoApi.getTexto().length() > 0) {
-                            for (String texto : automacaoApi.getTexto().split(";")) {
-                                PendenciaWhatsapp.addTexto(texto);
-                            }
-                        }
-                        for (File arquivo : Objects.requireNonNull(new File(arquivosPath).listFiles())) {
-                            if (arquivo.getName().substring(arquivo.getName().lastIndexOf('.')).equals(".png") ||
-                                    arquivo.getName().substring(arquivo.getName().lastIndexOf('.')).equals(".jpeg"))
-                                PendenciaWhatsapp.addArquivo(arquivo);
-                        }
-
+                        pendenciaUtil.recuperaMensagens(automacaoApi, arquivosPath);
                         if (PendenciaWhatsapp.getTextos().isEmpty() && PendenciaWhatsapp.getArquivos().isEmpty()) {
                             throw new MensagemVaziaException();
                         }
 
                         logger.info("Convertendo planilhas em pendências...");
                         List<PendenciaWhatsapp> pendenciasWhatsapp = new ArrayList<>(pendenciaUtil.converterPendencia(automacaoApi, idAutomacao));
-                        pendenciasWhatsapp = formataNumeros(pendenciasWhatsapp);
+                        pendenciasWhatsapp = pendenciaUtil.formataNumeros(pendenciasWhatsapp);
 
                         if (!pendenciasWhatsapp.isEmpty()) {
                             logger.info("Acessando site...");
@@ -106,7 +96,16 @@ public class RpaService {
 
                             logger.info("Processando pendências...");
                             for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
-                                whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
+                                try {
+                                    whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
+                                }
+                                catch (ContatoNaoEncontradoException e) {
+                                    if (pararContatoNaoEncontrado) {
+                                        throw e;
+                                    }
+                                    AutomacaoApiUtil.executarRequisicao(new Requisicao(linkRegistrarLog, token, idAutomacao, String.format("Falha: %s", e.getMessage()), null));
+                                    continue;
+                                }
                                 TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
                                 logger.info("Registrando processamento da pendência...");
                                 AutomacaoApiUtil.executarRequisicao(new Requisicao(linkProcessarPendencia, token, idAutomacao, null, pendenciaWhatsapp.getId()));
@@ -143,31 +142,9 @@ public class RpaService {
         }
     }
 
-    private List<PendenciaWhatsapp> formataNumeros(List<PendenciaWhatsapp> pendenciasWhatsapp) {
-        List<PendenciaWhatsapp> pendenciaWhatsappsFormatadas = new ArrayList<>();
-
-        for (PendenciaWhatsapp pendenciaWhatsapp : pendenciasWhatsapp) {
-            StringBuilder numero = new StringBuilder(pendenciaWhatsapp.getNumero().replace(".", "").replace(" ", "").replace("-", "").replace("(", "").replace(")", ""));
-
-            if (numero.length() == 0) {
-                continue;
-            }
-
-            if (numero.toString().contains("E")) {
-                numero = new StringBuilder(numero.substring(0, numero.indexOf("E")));
-            }
-
-            int numZeros = 11 - numero.toString().length();
-            if (numZeros > 0) {
-                for (int i = 0; i < numZeros; i++) {
-                    numero.append("0");
-                }
-            }
-            numero = new StringBuilder(numero.substring(0, 2) + " " + numero.substring(2));
-            pendenciaWhatsapp.setNumero(numero.toString());
-            pendenciaWhatsappsFormatadas.add(pendenciaWhatsapp);
-        }
-
-        return pendenciaWhatsappsFormatadas;
+    private void ajustaLinks() {
+        linkRecuperarDados = String.format(linkRecuperarDados, nomeAmbiente);
+        linkRegistrarLog = String.format(linkRegistrarLog, nomeAmbiente);
+        linkProcessarPendencia = String.format(linkProcessarPendencia, nomeAmbiente);
     }
 }

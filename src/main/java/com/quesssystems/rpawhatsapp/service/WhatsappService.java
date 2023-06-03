@@ -23,18 +23,14 @@ import java.util.List;
 
 @Service
 public class WhatsappService {
-
-    @Value("${rpa.chatdireto.link}")
-    private String chatDiretoLink;
-
-    @Value("${rpa.whatsapp.link}")
-    private String whatsappLink;
+    private static final String LINK_WHATSAPP = "https://web.whatsapp.com/";
+    private static final String LINK_CHAT_DIRETO = "https://chatdireto.com/";
 
     @Value("${rpa.texto-primeiro}")
     private Boolean textoPrimeiro;
 
     public void acessarWhatsappWeb(WebDriver webDriver, String linkRegistrarLog, String token, Integer idAutomacao) throws UrlInvalidaException, RecuperarDadosException, AutomacaoNaoIdentificadaException, MensagemInvalidaException, TokenInvalidoException, RequisicaoException {
-        SeleniumUtil.navegar(webDriver, whatsappLink);
+        SeleniumUtil.navegar(webDriver, LINK_WHATSAPP);
 
         while (true) {
             try {
@@ -55,7 +51,7 @@ public class WhatsappService {
     }
 
     private void abrirConversa(WebDriver webDriver, String numero) throws ElementoNaoEncontradoException, ContatoNaoEncontradoException, TimerUtilException, UrlInvalidaException {
-        SeleniumUtil.navegar(webDriver, chatDiretoLink);
+        SeleniumUtil.navegar(webDriver, LINK_CHAT_DIRETO);
         SeleniumUtil.aguardarElementoVisivel(webDriver, 10, By.xpath("//input[@name='telefone']")).sendKeys(numero);
         SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//button[contains(text(), 'Abrir WhatsApp!')]")).click();
 
