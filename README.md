@@ -25,8 +25,8 @@
 7) rpa.arquivos.path: caminho até a pasta onde deverão ser incluídos os arquivos .png e .jpeg a serem enviados a cada um dos contatos
 8) rpa.webdriver.path: caminho até o ChromeDriver
 9) rpa.profile.path: caminho até a pasta criada para armazenar o perfil usado no ChromeDriver
-10) rpa.browser-exe.path: caminho até a pasta do executável do Google Chrome 
-11) rpa.porta: porta a ser usada pelo navegador 
+10) rpa.browser-exe.path: caminho até a pasta do executável do Google Chrome
+11) rpa.porta: porta a ser usada pelo navegador
 
 <br>
 
