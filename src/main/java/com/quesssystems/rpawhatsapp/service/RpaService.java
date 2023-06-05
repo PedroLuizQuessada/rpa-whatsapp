@@ -100,6 +100,7 @@ public class RpaService {
                                     whatsappService.processarPendencia(webDriver, pendenciaWhatsapp);
                                 }
                                 catch (ContatoNaoEncontradoException e) {
+                                    logger.info(String.format("Contato não encontrado ID: %d", pendenciaWhatsapp.getId()));
                                     if (pararContatoNaoEncontrado) {
                                         throw e;
                                     }
@@ -107,7 +108,7 @@ public class RpaService {
                                     continue;
                                 }
                                 TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
-                                logger.info("Registrando processamento da pendência...");
+                                logger.info(String.format("Registrando processamento da pendência ID: %d", pendenciaWhatsapp.getId()));
                                 AutomacaoApiUtil.executarRequisicao(new Requisicao(linkProcessarPendencia, token, idAutomacao, null, pendenciaWhatsapp.getId()));
                             }
 

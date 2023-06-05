@@ -56,8 +56,8 @@ public class WhatsappService {
         SeleniumUtil.aguardarElementoClicavel(webDriver, 10, By.xpath("//button[contains(text(), 'Abrir WhatsApp!')]")).click();
 
         try {
-            SeleniumUtil.aguardarElementoVisivel(webDriver, 60, By.xpath("//button[@aria-label='Mensagem de voz']"));
-            TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 2);
+            SeleniumUtil.aguardarElementoVisivel(webDriver, 30, By.xpath("//button[@aria-label='Mensagem de voz']"));
+            TimerUtil.aguardar(UnidadesMedidaTempoEnum.SEGUNDOS, 5);
         }
         catch (ElementoNaoEncontradoException e) {
             throw new ContatoNaoEncontradoException(numero);
